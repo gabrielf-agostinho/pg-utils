@@ -17,12 +17,9 @@ CREATE OR REPLACE FUNCTION util.safe_divide(
 RETURNS NUMERIC
 LANGUAGE sql
 IMMUTABLE
+PARALLEL SAFE
 AS $$
-    SELECT
-        CASE
-            WHEN b IS NULL OR b = 0 THEN NULL
-            ELSE a / b
-        END;
+    SELECT a / NULLIF(b, 0);
 $$;
 
 COMMENT ON FUNCTION util.safe_divide(NUMERIC, NUMERIC)

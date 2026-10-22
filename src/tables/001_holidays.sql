@@ -3,6 +3,10 @@
 --
 -- Objetivo:
 --   Armazenar feriados para cálculo de dias úteis.
+--
+-- Observação:
+--   Todas as funções de dias úteis consideram todos os
+--   registros desta tabela, independente do tipo.
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS util.holidays (

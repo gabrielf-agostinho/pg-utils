@@ -3,25 +3,22 @@
 --
 -- Objetivo:
 --   Inserir feriados móveis brasileiros para um ano.
+--   Datas já cadastradas são mantidas.
+--
+-- Veja também:
+--   util.generate_holidays_br, que insere fixos e móveis.
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION util.generate_movable_holidays_br(year INTEGER)
 RETURNS VOID
-LANGUAGE plpgsql
+LANGUAGE sql
 VOLATILE
 AS $$
-DECLARE
-    easter DATE;
-BEGIN
-    easter := util.easter_date(year);
-
     INSERT INTO util.holidays (date, description, type)
-    VALUES
-        (easter - INTERVAL '47 days', 'Carnaval', 'national'),
-        (easter - INTERVAL '2 days',  'Sexta-feira Santa', 'national'),
-        (easter + INTERVAL '60 days', 'Corpus Christi', 'national')
+    SELECT h.holiday_date, h.description, 'national'
+    FROM util.holidays_br(year) AS h
+    WHERE h.is_movable
     ON CONFLICT DO NOTHING;
-END;
 $$;
 
 COMMENT ON FUNCTION util.generate_movable_holidays_br(INTEGER)

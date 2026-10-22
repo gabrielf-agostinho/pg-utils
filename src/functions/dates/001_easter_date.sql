@@ -2,13 +2,20 @@
 -- Função: util.easter_date
 --
 -- Objetivo:
---   Calcular a data da Páscoa para um determinado ano.
+--   Calcular a data da Páscoa para um determinado ano
+--   (algoritmo de Meeus/Jones/Butcher, calendário
+--   gregoriano).
+--
+-- Exemplos:
+--   util.easter_date(2026)  -> 2026-04-05
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION util.easter_date(year INTEGER)
 RETURNS DATE
 LANGUAGE plpgsql
 IMMUTABLE
+STRICT
+PARALLEL SAFE
 AS $$
 DECLARE
     a INTEGER;

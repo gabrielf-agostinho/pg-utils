@@ -5,9 +5,16 @@
 --   Retornar as diferenças entre dois objetos JSONB.
 --
 -- Regras:
---   - Comparação recursiva
+--   - Comparação recursiva em objetos aninhados
 --   - Campos iguais são ignorados
---   - Campos removidos aparecem com valor NULL
+--   - Campos removidos aparecem com valor null
+--   - Sem diferenças -> NULL
+--   - Se algum dos valores não for objeto, retorna
+--     new_json quando forem diferentes
+--
+-- Exemplos:
+--   util.jsonb_diff('{"a":1,"b":2}', '{"a":1,"b":3,"c":4}')  -> {"b": 3, "c": 4}
+--   util.jsonb_diff('{"a":1,"b":2}', '{"a":1}')              -> {"b": null}
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION util.jsonb_diff(
@@ -17,32 +24,36 @@ CREATE OR REPLACE FUNCTION util.jsonb_diff(
 RETURNS JSONB
 LANGUAGE plpgsql
 IMMUTABLE
+PARALLEL SAFE
 AS $$
 DECLARE
-    result JSONB := '{}';
-    key TEXT;
+    result  JSONB := '{}';
+    key     TEXT;
     old_val JSONB;
     new_val JSONB;
 BEGIN
-    IF old_json IS NULL AND new_json IS NULL THEN
+    IF old_json IS NOT DISTINCT FROM new_json THEN
         RETURN NULL;
     END IF;
 
+    IF jsonb_typeof(COALESCE(old_json, '{}')) <> 'object'
+       OR jsonb_typeof(COALESCE(new_json, '{}')) <> 'object'
+    THEN
+        RETURN COALESCE(new_json, 'null'::JSONB);
+    END IF;
+
     FOR key IN
-        SELECT DISTINCT k
-        FROM (
-            SELECT jsonb_object_keys(old_json) AS k
-            UNION
-            SELECT jsonb_object_keys(new_json) AS k
-        ) s
+        SELECT jsonb_object_keys(COALESCE(old_json, '{}'))
+        UNION
+        SELECT jsonb_object_keys(COALESCE(new_json, '{}'))
     LOOP
         old_val := old_json -> key;
         new_val := new_json -> key;
 
-        IF old_val IS NULL AND new_val IS NOT NULL THEN
+        IF old_val IS NULL THEN
             result := result || jsonb_build_object(key, new_val);
 
-        ELSIF old_val IS NOT NULL AND new_val IS NULL THEN
+        ELSIF new_val IS NULL THEN
             result := result || jsonb_build_object(key, NULL);
 
         ELSIF old_val <> new_val THEN
@@ -59,11 +70,7 @@ BEGIN
         END IF;
     END LOOP;
 
-    IF result = '{}'::jsonb THEN
-        RETURN NULL;
-    END IF;
-
-    RETURN result;
+    RETURN NULLIF(result, '{}'::JSONB);
 END;
 $$;
 
